@@ -1,0 +1,9 @@
+.idea/
+
+.env
+*.swp
+*.log
+notes.txt
+
+chronicles
+chronicles-linux*
