@@ -5,6 +5,7 @@ import (
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	_ "github.com/lib/pq"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -39,6 +40,7 @@ func serverFn(cmd *cobra.Command, args []string) {
 	// rollbar.Environment = viper.GetString("server.rollbar-environment")
 	// rollbar.CodeVersion = version.Version
 
+	log.Info().Msgf("Connecting to %s", common.Config.DBUrl)
 	db, err := sql.Open("postgres", common.Config.DBUrl)
 	if err != nil {
 		log.Fatal().Err(err).Msg("sql.Open")
