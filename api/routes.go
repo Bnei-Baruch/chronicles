@@ -5,5 +5,5 @@ import (
 )
 
 func SetupRoutes(router *gin.Engine) {
-	router.POST("/add", Handler)
+	router.POST("/append", AppendHandler)
 }

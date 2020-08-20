@@ -42,6 +42,7 @@ func serverFn(cmd *cobra.Command, args []string) {
 
 	log.Info().Msgf("Connecting to %s", common.Config.DBUrl)
 	db, err := sql.Open("postgres", common.Config.DBUrl)
+	log.Info().Msgf("Ret: %+v %+v", db, err)
 	if err != nil {
 		log.Fatal().Err(err).Msg("sql.Open")
 	}

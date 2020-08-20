@@ -5,14 +5,34 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"os"
 	"runtime/debug"
+	"strings"
 	"time"
 
+	"github.com/Bnei-Baruch/chronicles/pkg/sqlutil"
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator"
 	"github.com/pkg/errors"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/hlog"
 	"github.com/rs/zerolog/log"
+	"github.com/rs/zerolog/pkgerrors"
 )
+
+func init() {
+	zerolog.SetGlobalLevel(zerolog.InfoLevel)
+
+	zerolog.CallerFieldName = "line"
+	zerolog.CallerMarshalFunc = func(file string, line int) string {
+		rel := strings.Split(file, "chronicles/")
+		return fmt.Sprintf("%s:%d", rel[1], line)
+	}
+	zerolog.TimeFieldFormat = time.RFC3339Nano
+	zerolog.ErrorStackMarshaler = pkgerrors.MarshalStack
+	output := zerolog.ConsoleWriter{Out: os.Stderr, TimeFormat: time.RFC3339Nano}
+	log.Logger = log.Output(output).With().Caller().Stack().Logger()
+}
 
 // Set MDB in context.
 func DataStoresMiddleware(mbdDB *sql.DB) gin.HandlerFunc {
@@ -22,20 +42,24 @@ func DataStoresMiddleware(mbdDB *sql.DB) gin.HandlerFunc {
 	}
 }
 
+//var requestLog = zerolog.New(os.Stdout).With().Timestamp().Caller().Stack().Logger()
+
 func LoggerMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		start := time.Now()
-		path := c.Request.URL.RequestURI() // some evil middleware modify this values
+		r := c.Request
+		path := r.URL.RequestURI() // some evil middleware modify this values
 
 		c.Next()
 
-		log.Info().
-			Int("status", c.Writer.Status()).
-			Str("method", c.Request.Method).
+		event := hlog.FromRequest(r).Info().
+			Str("method", r.Method).
 			Str("path", path).
+			Int("status", c.Writer.Status()).
+			//Int("size", size).
 			Dur("latency", time.Now().Sub(start)).
-			Str("ip", c.ClientIP()).
-			Str("user-agent", c.Request.UserAgent())
+			Str("ip", c.ClientIP())
+		event.Msg("")
 	}
 }
 
@@ -135,7 +159,18 @@ func ErrorHandlingMiddleware() gin.HandlerFunc {
 
 				default:
 					// Log all other errors
-					log.Error().Err(e.Err)
+					err := e.Err
+					messages := []string(nil)
+					for err != nil {
+						messages = append(messages, fmt.Sprintf("%+v", err))
+						var e *sqlutil.TxError
+						if errors.As(err, &e) {
+							err = e.Unwrap()
+						} else {
+							break
+						}
+					}
+					log.Error().Err(err).Msg(strings.Join(messages, "\n"))
 					// TODO: Uncomment after Rollbar integration.
 					// LogRequestError(c.Request, e.Err)
 				}
