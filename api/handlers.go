@@ -2,13 +2,16 @@ package api
 
 import (
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"math/rand"
 	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/oklog/ulid"
+	"github.com/rs/zerolog/log"
 	"github.com/volatiletech/null"
 	"github.com/volatiletech/sqlboiler/boil"
 	"golang.org/x/net/context"
@@ -18,7 +21,7 @@ import (
 )
 
 func init() {
-	boil.DebugMode = true
+	// boil.DebugMode = true
 }
 
 func ValueOrEmpty(s null.String) string {
@@ -66,10 +69,10 @@ func AppendHandler(c *gin.Context) {
 
 func handleAppend(db *sql.DB, r AppendRequest, clientIP string, userAgent string) (*AppendResponse, *HttpError) {
 	if ValueOrEmpty(r.KeycloakId) == "" && ValueOrEmpty(r.ClientId) == "" {
-		return nil, NewBadRequestError(errors.New("Expected either keycloak_id or client_id to not be empty."))
+		return nil, NewBadRequestError(errors.New("Expected either keycloak_id or client_id to be set."))
 	}
 	if ValueOrEmpty(r.KeycloakId) != "" && ValueOrEmpty(r.ClientId) != "" {
-		return nil, NewBadRequestError(errors.New("Expected only one of keycloak_id, client_id to be set."))
+		return nil, NewBadRequestError(errors.New("Expected only one of keycloak_id or client_id to be set."))
 	}
 	if r.Namespace == "" {
 		return nil, NewBadRequestError(errors.New("Expected namespace to not be empty."))
@@ -79,7 +82,8 @@ func handleAppend(db *sql.DB, r AppendRequest, clientIP string, userAgent string
 	}
 
 	var entry models.Entry
-	if id, err := ulid.New(ulid.Timestamp(time.Now()), nil /*entropy*/); err != nil {
+	now := time.Now()
+	if id, err := ulid.New(ulid.Timestamp(now), ulid.Monotonic(rand.New(rand.NewSource(now.UnixNano())), 0)); err != nil {
 		return nil, NewInternalError(err)
 	} else {
 		entry.ID = id.String()
@@ -99,6 +103,13 @@ func handleAppend(db *sql.DB, r AppendRequest, clientIP string, userAgent string
 	entry.ClientFlowType = r.ClientFlowType
 	entry.ClientSessionID = r.ClientSessionID
 	entry.Data = r.Data
+
+	if data, err := json.Marshal(entry.Data); err == nil {
+		log.Info().Msgf("Namespace: %+v\nEvent: %+v %+v\nFlow: %+v %+v\nData: %s\nSession: %+v",
+			r.Namespace, entry.ClientEventType, entry.ClientEventID, entry.ClientFlowType, entry.ClientFlowID, data, entry.ClientSessionID)
+	} else {
+		log.Warn().Msgf("Error marshling data: %+v", err)
+	}
 
 	err := sqlutil.InTx(context.TODO(), db, func(tx *sql.Tx) error {
 		return entry.Insert(tx, boil.Infer())
