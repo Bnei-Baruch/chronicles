@@ -1,16 +1,21 @@
 package api
 
 import (
-//"time"
-
-//"github.com/Bnei-Baruch/feed-api/utils"
+	"github.com/volatiletech/null"
 )
 
-/*type Item struct {
-	ID          string      `json:"id"`
-	ContentType string      `json:"content_type"`
-	Name        string      `json:"name,omitempty"`
-	Description string      `json:"description,omitempty"`
-	FilmDate    *utils.Date `json:"film_date,omitempty"`
-	CreatedAt   time.Time   `json:"created_at,omitempty"`
-}*/
+type AppendRequest struct {
+	KeycloakId      null.String `json:"keycloak_id"`
+	Namespace       string      `json:"namespace"`
+	ClientId        null.String `json:"client_id"`
+	ClientEventID   null.String `json:"client_event_id,omitempty"`
+	ClientEventType string      `json:"client_event_type"`
+	ClientFlowID    null.String `json:"client_flow_id,omitempty"`
+	ClientFlowType  null.String `json:"client_flow_type,omitempty"`
+	ClientSessionID null.String `json:"client_session_id,omitempty"`
+	Data            null.JSON   `json:"data,omitempty"`
+}
+
+type AppendResponse struct {
+	ID string `json:"id"`
+}

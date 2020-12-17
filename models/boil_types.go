@@ -6,7 +6,7 @@ package models
 import (
 	"strconv"
 
-	"github.com/friendsofgo/errors"
+	"github.com/pkg/errors"
 	"github.com/volatiletech/sqlboiler/boil"
 	"github.com/volatiletech/sqlboiler/strmangle"
 )

@@ -12,7 +12,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/friendsofgo/errors"
+	"github.com/pkg/errors"
 	"github.com/volatiletech/null"
 	"github.com/volatiletech/sqlboiler/boil"
 	"github.com/volatiletech/sqlboiler/queries"

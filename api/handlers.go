@@ -5,57 +5,19 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"math/rand"
 	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/oklog/ulid"
-	"github.com/rs/zerolog/log"
+	"github.com/rs/zerolog"
+	"github.com/segmentio/ksuid"
 	"github.com/volatiletech/null"
 	"github.com/volatiletech/sqlboiler/boil"
-	"golang.org/x/net/context"
 
 	"github.com/Bnei-Baruch/chronicles/models"
+	"github.com/Bnei-Baruch/chronicles/pkg/httputil"
 	"github.com/Bnei-Baruch/chronicles/pkg/sqlutil"
 )
-
-func init() {
-	// boil.DebugMode = true
-}
-
-func ValueOrEmpty(s null.String) string {
-	if p := s.Ptr(); p != nil {
-		return *p
-	}
-	return ""
-}
-
-// Responds with JSON of given response or aborts the request with the given error.
-func concludeRequest(c *gin.Context, resp interface{}, err *HttpError) {
-	if err == nil {
-		c.JSON(http.StatusOK, resp)
-	} else {
-		err.Abort(c)
-	}
-}
-
-// Append
-type AppendRequest struct {
-	KeycloakId      null.String `json:"keycloak_id"`
-	Namespace       string      `json:"namespace"`
-	ClientId        null.String `json:"client_id"`
-	ClientEventID   null.String `json:"client_event_id,omitempty"`
-	ClientEventType string      `json:"client_event_type"`
-	ClientFlowID    null.String `json:"client_flow_id,omitempty"`
-	ClientFlowType  null.String `json:"client_flow_type,omitempty"`
-	ClientSessionID null.String `json:"client_session_id,omitempty"`
-	Data            null.JSON   `json:"data,omitempty"`
-}
-
-type AppendResponse struct {
-	ID string `json:"id"`
-}
 
 func AppendHandler(c *gin.Context) {
 	r := AppendRequest{}
@@ -63,60 +25,76 @@ func AppendHandler(c *gin.Context) {
 		return
 	}
 
-	resp, err := handleAppend(c.MustGet("MDB_DB").(*sql.DB), r, c.ClientIP(), c.Request.UserAgent())
+	resp, err := handleAppend(c, r)
 	concludeRequest(c, resp, err)
 }
 
-func handleAppend(db *sql.DB, r AppendRequest, clientIP string, userAgent string) (*AppendResponse, *HttpError) {
-	if ValueOrEmpty(r.KeycloakId) == "" && ValueOrEmpty(r.ClientId) == "" {
-		return nil, NewBadRequestError(errors.New("Expected either keycloak_id or client_id to be set."))
+func handleAppend(c *gin.Context, r AppendRequest) (*AppendResponse, *httputil.HttpError) {
+	if valueOrEmpty(r.KeycloakId) == "" && valueOrEmpty(r.ClientId) == "" {
+		return nil, httputil.NewBadRequestError(errors.New("expected either keycloak_id or client_id to be set"))
 	}
-	if ValueOrEmpty(r.KeycloakId) != "" && ValueOrEmpty(r.ClientId) != "" {
-		return nil, NewBadRequestError(errors.New("Expected only one of keycloak_id or client_id to be set."))
+	if valueOrEmpty(r.KeycloakId) != "" && valueOrEmpty(r.ClientId) != "" {
+		return nil, httputil.NewBadRequestError(errors.New("expected only one of keycloak_id or client_id to be set"))
 	}
 	if r.Namespace == "" {
-		return nil, NewBadRequestError(errors.New("Expected namespace to not be empty."))
+		return nil, httputil.NewBadRequestError(errors.New("expected namespace to not be empty"))
 	}
 	if r.ClientEventType == "" {
-		return nil, NewBadRequestError(errors.New("Expected client_event_type to not be empty."))
+		return nil, httputil.NewBadRequestError(errors.New("expected client_event_type to not be empty"))
 	}
 
-	var entry models.Entry
-	now := time.Now()
-	if id, err := ulid.New(ulid.Timestamp(now), ulid.Monotonic(rand.New(rand.NewSource(now.UnixNano())), 0)); err != nil {
-		return nil, NewInternalError(err)
-	} else {
-		entry.ID = id.String()
+	entry := models.Entry{
+		ID:              ksuid.New().String(),
+		CreatedAt:       time.Now(),
+		IPAddr:          c.ClientIP(),
+		UserAgent:       c.Request.UserAgent(),
+		Namespace:       r.Namespace,
+		ClientEventID:   r.ClientEventID,
+		ClientEventType: r.ClientEventType,
+		ClientFlowID:    r.ClientFlowID,
+		ClientFlowType:  r.ClientFlowType,
+		ClientSessionID: r.ClientSessionID,
 	}
-	if ValueOrEmpty(r.KeycloakId) != "" {
-		entry.UserID = ValueOrEmpty(r.KeycloakId)
+
+	if valueOrEmpty(r.KeycloakId) != "" {
+		entry.UserID = valueOrEmpty(r.KeycloakId)
 	} else {
-		entry.UserID = fmt.Sprintf("client:%s", ValueOrEmpty(r.ClientId))
+		entry.UserID = fmt.Sprintf("client:%s", valueOrEmpty(r.ClientId))
 	}
-	entry.CreatedAt = time.Now()
-	entry.IPAddr = clientIP
-	entry.UserAgent = userAgent
-	entry.Namespace = r.Namespace
-	entry.ClientEventID = r.ClientEventID
-	entry.ClientEventType = r.ClientEventType
-	entry.ClientFlowID = r.ClientFlowID
-	entry.ClientFlowType = r.ClientFlowType
-	entry.ClientSessionID = r.ClientSessionID
+
+	log := c.MustGet("LOGGER").(zerolog.Logger)
+
 	entry.Data = r.Data
-
 	if data, err := json.Marshal(entry.Data); err == nil {
 		log.Info().Msgf("Namespace: %+v\nEvent: %+v %+v\nFlow: %+v %+v\nData: %s\nSession: %+v",
 			r.Namespace, entry.ClientEventType, entry.ClientEventID, entry.ClientFlowType, entry.ClientFlowID, data, entry.ClientSessionID)
 	} else {
-		log.Warn().Msgf("Error marshling data: %+v", err)
+		log.Warn().Msgf("json.Marshal(data) error: %+v", err)
 	}
 
-	err := sqlutil.InTx(context.TODO(), db, func(tx *sql.Tx) error {
+	db := c.MustGet("DB").(*sql.DB)
+	err := sqlutil.InTx(db, log, func(tx *sql.Tx) error {
 		return entry.Insert(tx, boil.Infer())
 	})
 	if err != nil {
-		return nil, NewInternalError(err)
+		return nil, httputil.NewInternalError(err)
 	}
 
 	return &AppendResponse{entry.ID}, nil
+}
+
+func valueOrEmpty(s null.String) string {
+	if p := s.Ptr(); p != nil {
+		return *p
+	}
+	return ""
+}
+
+// Responds with JSON of given response or aborts the request with the given error.
+func concludeRequest(c *gin.Context, resp interface{}, err *httputil.HttpError) {
+	if err == nil {
+		c.JSON(http.StatusOK, resp)
+	} else {
+		err.Abort(c)
+	}
 }

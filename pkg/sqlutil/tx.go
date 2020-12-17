@@ -1,11 +1,10 @@
 package sqlutil
 
 import (
-	"context"
 	"database/sql"
 
 	pkgerr "github.com/pkg/errors"
-	"github.com/rs/zerolog/log"
+	"github.com/rs/zerolog"
 	"github.com/volatiletech/sqlboiler/boil"
 
 	"github.com/Bnei-Baruch/chronicles/pkg/errs"
@@ -22,7 +21,7 @@ func WrappingTxError(err error, msg string) *TxError {
 	}}
 }
 
-func InTx(ctx context.Context, beginner boil.Beginner, f func(*sql.Tx) error) error {
+func InTx(beginner boil.Beginner, log zerolog.Logger, f func(*sql.Tx) error) error {
 	tx, err := beginner.Begin()
 	if err != nil {
 		a := pkgerr.WithStack(WrappingTxError(err, "begin tx"))
@@ -33,7 +32,7 @@ func InTx(ctx context.Context, beginner boil.Beginner, f func(*sql.Tx) error) er
 	defer func() {
 		if p := recover(); p != nil {
 			if ex := tx.Rollback(); ex != nil {
-				log.Ctx(ctx).Error().Err(ex).Msg("rollback error on panic")
+				log.Error().Err(ex).Msg("rollback error on panic")
 			}
 			panic(p) // re-throw panic after Rollback
 		}
