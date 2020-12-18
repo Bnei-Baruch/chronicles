@@ -4,7 +4,7 @@ CREATE TABLE IF NOT EXISTS entries
     id                CHAR(27) PRIMARY KEY,                            -- ULID
     created_at        TIMESTAMP WITH TIME ZONE DEFAULT now() NOT NULL,
 
-    user_id           VARCHAR(36)                            NOT NULL, -- accounts service id (keyclock)
+    user_id           VARCHAR(64)                            NOT NULL, -- accounts service id (keyclock), or any other client side id which will be appended as "client:<local client id>"
     ip_addr           INET                                   NOT NULL,
     user_agent        TEXT                                   NOT NULL,
     namespace         VARCHAR(64)                            NOT NULL, -- Client namespace, nested, e.g., "archive_v1.2.3.search"
