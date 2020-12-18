@@ -1,71 +1,88 @@
 package cmd
 
 import (
+	"context"
 	"database/sql"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	_ "github.com/lib/pq"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 
 	"github.com/Bnei-Baruch/chronicles/api"
 	"github.com/Bnei-Baruch/chronicles/common"
-	"github.com/Bnei-Baruch/chronicles/utils"
+	"github.com/Bnei-Baruch/chronicles/middleware"
 	"github.com/Bnei-Baruch/chronicles/version"
 )
 
 var serverCmd = &cobra.Command{
 	Use:   "server",
-	Short: "Feed api server",
+	Short: "Chronicles server",
 	Run:   serverFn,
 }
 
-var bindAddress string
-
 func init() {
-	serverCmd.PersistentFlags().StringVar(&bindAddress, "bind_address", "", "Bind address for server.")
-	viper.BindPFlag("server.bind-address", serverCmd.PersistentFlags().Lookup("bind_address"))
 	rootCmd.AddCommand(serverCmd)
 }
 
 func serverFn(cmd *cobra.Command, args []string) {
 	log.Info().Msgf("Starting Chronicles server version %s", version.Version)
-	common.Init()
-	// defer common.Shutdown()
 
-	// TODO: Setup Rollbar
-	// rollbar.Token = viper.GetString("server.rollbar-token")
-	// rollbar.Environment = viper.GetString("server.rollbar-environment")
-	// rollbar.CodeVersion = version.Version
+	log.Debug().Msgf("Config\n%v", common.Config)
 
-	log.Info().Msgf("Connecting to %s", common.Config.DBUrl)
 	db, err := sql.Open("postgres", common.Config.DBUrl)
-	log.Info().Msgf("Ret: %+v %+v", db, err)
 	if err != nil {
 		log.Fatal().Err(err).Msg("sql.Open")
 	}
+	defer db.Close()
+	// boil.DebugMode = true
 
 	// Setup gin
-	gin.SetMode(viper.GetString("server.mode"))
+	gin.SetMode(common.Config.GinServerMode)
 	router := gin.New()
 	router.Use(
-		utils.LoggerMiddleware(),
-		utils.DataStoresMiddleware(db),
-		utils.ErrorHandlingMiddleware(),
+		middleware.LoggingMiddleware(),
+		middleware.RecoveryMiddleware(),
+		middleware.ErrorHandlingMiddleware(),
 		cors.Default(),
-		utils.RecoveryMiddleware())
+		middleware.ContextMiddleware(db))
 
 	api.SetupRoutes(router)
 
-	log.Info().Msg("Running application")
-	if cmd != nil {
-		router.Run(viper.GetString("server.bind-address"))
+	addr := common.Config.ListenAddress
+	log.Info().Msgf("Running application %s", addr)
+	srv := &http.Server{
+		Addr:    addr,
+		Handler: router,
 	}
 
-	// This would be reasonable once we'll have graceful shutdown implemented
-	// if len(rollbar.Token) > 0 {
-	// 	rollbar.Wait()
-	// }
+	// Initializing the server in a goroutine so that
+	// it won't block the graceful shutdown handling below
+	go func() {
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			log.Fatal().Err(err).Msg("ListenAndServe")
+		}
+	}()
+
+	// Wait for interrupt signal to gracefully shutdown the server with a timeout of 5 seconds.
+	quit := make(chan os.Signal)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+	<-quit
+	log.Info().Msg("Shutting down server...")
+
+	// The context is used to inform the server it has 5 seconds to finish
+	// the request it is currently handling
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	if err := srv.Shutdown(ctx); err != nil {
+		log.Fatal().Err(err).Msg("Server forced to shutdown")
+	}
+
+	log.Info().Msg("Server exiting")
 }
