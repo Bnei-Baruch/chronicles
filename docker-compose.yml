@@ -3,10 +3,42 @@ version: "3.7"
 services:
   db:
     image: postgres:12
-    restart: always
-    environment:
-      POSTGRES_PASSWORD: password
-      POSTGRES_USER: user
-      POSTGRES_DB: chronicles
+    restart: unless-stopped
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+      - backup:/backup
+    networks:
+      - backend
     ports:
       - 5432:5432
+    environment:
+      POSTGRES_DB: chronicles
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      PGDATA: /var/lib/postgresql/data/pgdata
+  app:
+    image: bneibaruch/chronicles:latest
+    restart: unless-stopped
+    networks:
+      - backend
+    ports:
+      - 8080:8080
+    depends_on:
+      - db
+    environment:
+      DB_URL: postgres://${DB_USER}:${DB_PASSWORD}@db/chronicles?sslmode=disable
+      GIN_SERVER_MODE: release
+    logging:
+      driver: json-file
+      options:
+        max-size: '12m'
+        max-file: '5'
+    command: [ "/wait-for", "db:5432", "--", "./chronicles", "server" ]
+
+
+networks:
+  backend:
+
+volumes:
+  pg_data:
+  backup:
