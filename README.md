@@ -39,7 +39,7 @@ migrate create -ext .sql -dir migrations -format 20060102150405 <migration_name_
 
 Run migrations
 ```shell script
-migrate -database "postgres://user:password@localhost/galaxy?sslmode=disable" -path migrations up
+migrate -database "postgres://user:password@localhost/chronicles?sslmode=disable" -path migrations up
 ```
 
 Regenerate models
