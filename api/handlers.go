@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"errors"
@@ -9,6 +10,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	pkgerr "github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/segmentio/ksuid"
 	"github.com/volatiletech/null"
@@ -27,6 +29,24 @@ func AppendHandler(c *gin.Context) {
 
 	resp, err := handleAppend(c, r)
 	concludeRequest(c, resp, err)
+}
+
+func HealthCheckHandler(c *gin.Context) {
+	ctx, cancel := context.WithTimeout(context.TODO(), time.Second)
+	defer cancel()
+
+	db := c.MustGet("DB").(*sql.DB)
+	err := db.PingContext(ctx)
+	if err == nil {
+		err = ctx.Err()
+	}
+
+	if err != nil {
+		c.AbortWithError(http.StatusFailedDependency, pkgerr.Wrap(err, "DB ping")).SetType(gin.ErrorTypePublic)
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"status": "ok"})
 }
 
 func handleAppend(c *gin.Context, r AppendRequest) (*AppendResponse, *httputil.HttpError) {
