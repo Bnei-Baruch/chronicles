@@ -14,6 +14,21 @@ CLI access to local dev db
 docker-compose exec db psql -U user -d chronicles
 ```
 
+### Production Environment
+Once you have ssh access to production server you could:
+
+CLI access to production db
+```shell script
+cd /opt/chronicles
+docker-compose exec db psql -U chronicles
+```
+
+Application logs
+```shell script
+cd /opt/chronicles
+docker-compose logs -f app
+```
+
 #### Try out the API
 To try out authenticated endpoints on your local environment set the `SKIP_AUTH=true` environment variable.
 This will allow every request to any endpoint.
