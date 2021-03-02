@@ -62,6 +62,11 @@ func handleAppend(c *gin.Context, r AppendRequest) (*AppendResponse, *httputil.H
 	if r.ClientEventType == "" {
 		return nil, httputil.NewBadRequestError(errors.New("expected client_event_type to not be empty"))
 	}
+	if r.Data.Valid {
+		if _, err := json.Marshal(r.Data); err != nil {
+			return nil, httputil.NewBadRequestError(errors.New("expected data to be a valid json"))
+		}
+	}
 
 	entry := models.Entry{
 		ID:              ksuid.New().String(),
@@ -74,6 +79,7 @@ func handleAppend(c *gin.Context, r AppendRequest) (*AppendResponse, *httputil.H
 		ClientFlowID:    r.ClientFlowID,
 		ClientFlowType:  r.ClientFlowType,
 		ClientSessionID: r.ClientSessionID,
+		Data:            r.Data,
 	}
 
 	if valueOrEmpty(r.KeycloakId) != "" {
@@ -82,17 +88,8 @@ func handleAppend(c *gin.Context, r AppendRequest) (*AppendResponse, *httputil.H
 		entry.UserID = fmt.Sprintf("client:%s", valueOrEmpty(r.ClientId))
 	}
 
-	log := c.MustGet("LOGGER").(zerolog.Logger)
-
-	entry.Data = r.Data
-	if data, err := json.Marshal(entry.Data); err == nil {
-		log.Info().Msgf("Namespace: %+v\nEvent: %+v %+v\nFlow: %+v %+v\nData: %s\nSession: %+v",
-			r.Namespace, entry.ClientEventType, entry.ClientEventID, entry.ClientFlowType, entry.ClientFlowID, data, entry.ClientSessionID)
-	} else {
-		log.Warn().Msgf("json.Marshal(data) error: %+v", err)
-	}
-
 	db := c.MustGet("DB").(*sql.DB)
+	log := c.MustGet("LOGGER").(zerolog.Logger)
 	err := sqlutil.InTx(db, log, func(tx *sql.Tx) error {
 		return entry.Insert(tx, boil.Infer())
 	})
