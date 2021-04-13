@@ -6,5 +6,6 @@ import (
 
 func SetupRoutes(router *gin.Engine) {
 	router.POST("/append", AppendHandler)
+	router.POST("/appends", AppendsHandler)
 	router.GET("/health_check", HealthCheckHandler)
 }

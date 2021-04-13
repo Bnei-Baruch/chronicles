@@ -21,16 +21,6 @@ import (
 	"github.com/Bnei-Baruch/chronicles/pkg/sqlutil"
 )
 
-func AppendHandler(c *gin.Context) {
-	r := AppendRequest{}
-	if c.Bind(&r) != nil {
-		return
-	}
-
-	resp, err := handleAppend(c, r)
-	concludeRequest(c, resp, err)
-}
-
 func HealthCheckHandler(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(context.TODO(), time.Second)
 	defer cancel()
@@ -49,7 +39,41 @@ func HealthCheckHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"status": "ok"})
 }
 
-func handleAppend(c *gin.Context, r AppendRequest) (*AppendResponse, *httputil.HttpError) {
+func AppendsHandler(c *gin.Context) {
+	r := AppendsRequest{}
+	if c.Bind(&r) != nil {
+		return
+	}
+
+	resp, err := handleAppends(c, r)
+	concludeRequest(c, resp, err)
+}
+
+func handleAppends(c *gin.Context, r AppendsRequest) (*AppendsResponse, *httputil.HttpError) {
+	now := time.Now()
+	var resp AppendsResponse
+	for _, appendOffsetRequest := range r.AppendRequests {
+		then := now.Add(time.Duration(appendOffsetRequest.Offset) * time.Millisecond)
+		if appendResponse, err := handleAppend(c, then, appendOffsetRequest.Append); err != nil {
+			return nil, err
+		} else {
+			resp.Ids = append(resp.Ids, appendResponse.Id)
+		}
+	}
+	return &resp, nil
+}
+
+func AppendHandler(c *gin.Context) {
+	r := AppendRequest{}
+	if c.Bind(&r) != nil {
+		return
+	}
+
+	resp, err := handleAppend(c, time.Now(), r)
+	concludeRequest(c, resp, err)
+}
+
+func handleAppend(c *gin.Context, now time.Time, r AppendRequest) (*AppendResponse, *httputil.HttpError) {
 	if valueOrEmpty(r.KeycloakId) == "" && valueOrEmpty(r.ClientId) == "" {
 		return nil, httputil.NewBadRequestError(errors.New("expected either keycloak_id or client_id to be set"))
 	}
@@ -70,7 +94,7 @@ func handleAppend(c *gin.Context, r AppendRequest) (*AppendResponse, *httputil.H
 
 	entry := models.Entry{
 		ID:              ksuid.New().String(),
-		CreatedAt:       time.Now(),
+		CreatedAt:       now,
 		IPAddr:          c.ClientIP(),
 		UserAgent:       c.Request.UserAgent(),
 		Namespace:       r.Namespace,

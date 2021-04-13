@@ -17,5 +17,18 @@ type AppendRequest struct {
 }
 
 type AppendResponse struct {
-	ID string `json:"id"`
+	Id string `json:"id"`
+}
+
+type AppendOffsetRequest struct {
+	Append AppendRequest `json: "append"`
+	Offset int64         `json: "offset"`
+}
+
+type AppendsRequest struct {
+	AppendRequests []AppendOffsetRequest `json:"append_requests"`
+}
+
+type AppendsResponse struct {
+	Ids []string `json:"ids"`
 }
