@@ -15,11 +15,31 @@ import (
 	"github.com/segmentio/ksuid"
 	"github.com/volatiletech/null"
 	"github.com/volatiletech/sqlboiler/boil"
+	"github.com/volatiletech/sqlboiler/queries/qm"
 
 	"github.com/Bnei-Baruch/chronicles/models"
 	"github.com/Bnei-Baruch/chronicles/pkg/httputil"
 	"github.com/Bnei-Baruch/chronicles/pkg/sqlutil"
 )
+
+func ScanHandler(c *gin.Context) {
+	r := ScanRequest{}
+	if c.Bind(&r) != nil {
+		return
+	}
+
+	db := c.MustGet("DB").(*sql.DB)
+	mods := []qm.QueryMod{}
+	if r.Id != "" {
+		mods = append(mods, qm.Where("id > ?", r.Id))
+	}
+	mods = append(mods, qm.OrderBy("id asc"), qm.Limit(500))
+	if entries, err := models.Entries(mods...).All(db); err != nil {
+		concludeRequest(c, nil, httputil.NewInternalError(err))
+	} else {
+		concludeRequest(c, ScanResponse{entries}, nil)
+	}
+}
 
 func HealthCheckHandler(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(context.TODO(), time.Second)

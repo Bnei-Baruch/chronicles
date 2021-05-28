@@ -3,8 +3,9 @@ module github.com/Bnei-Baruch/chronicles
 go 1.13
 
 require (
+	github.com/Bnei-Baruch/sqlboiler v2.6.1+incompatible
 	github.com/DATA-DOG/go-sqlmock v1.4.1 // indirect
-	github.com/friendsofgo/errors v0.9.2 // indirect
+	github.com/friendsofgo/errors v0.9.2
 	github.com/gin-contrib/cors v1.3.1
 	github.com/gin-gonic/gin v1.6.3
 	github.com/go-playground/validator v9.31.0+incompatible

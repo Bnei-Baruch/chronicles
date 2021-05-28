@@ -2,7 +2,17 @@ package api
 
 import (
 	"github.com/volatiletech/null"
+
+	"github.com/Bnei-Baruch/chronicles/models"
 )
+
+type ScanRequest struct {
+	Id string `json:"id",omitempty`
+}
+
+type ScanResponse struct {
+	Entries []*models.Entry `json:"entries"`
+}
 
 type AppendRequest struct {
 	KeycloakId      null.String `json:"keycloak_id"`

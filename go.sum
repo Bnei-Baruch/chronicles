@@ -1,4 +1,6 @@
 cloud.google.com/go v0.26.0/go.mod h1:aQUYkXzVsufM+DwF1aE+0xfcU+56JwCaLick0ClmMTw=
+github.com/Bnei-Baruch/sqlboiler v2.6.1+incompatible h1:HtGfnExo3u0EOuxwMB9D+CK8DOIdplYUkzDjyfHVtuA=
+github.com/Bnei-Baruch/sqlboiler v2.6.1+incompatible/go.mod h1:3b1gK4UEu/d5pgR34yZggyhCaG9yPvqyF6xSIDwfbtk=
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
 github.com/DATA-DOG/go-sqlmock v1.4.1 h1:ThlnYciV1iM/V0OSF/dtkqWb6xo5qITT1TJBG1MRDJM=
 github.com/DATA-DOG/go-sqlmock v1.4.1/go.mod h1:f/Ixk793poVmq4qj/V1dPUg2JEAKC73Q5eFN3EC/SaM=

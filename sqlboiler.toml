@@ -2,11 +2,11 @@ no-hooks=true
 no-tests=true
 no-auto-timestamps=true
 no-context=true
-blacklist=["schema_migrations"]
 [psql]
   dbname="chronicles"
   host="localhost"
   port=5432
-  user="user"
+  user="postgres"
   pass="password"
   sslmode="disable"
+  blacklist = ["schema_migrations"]
