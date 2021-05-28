@@ -22,6 +22,10 @@ import (
 	"github.com/Bnei-Baruch/chronicles/pkg/sqlutil"
 )
 
+const (
+	DEFAULT_LIMIT = 500
+)
+
 func ScanHandler(c *gin.Context) {
 	r := ScanRequest{}
 	if c.Bind(&r) != nil {
@@ -33,7 +37,11 @@ func ScanHandler(c *gin.Context) {
 	if r.Id != "" {
 		mods = append(mods, qm.Where("id > ?", r.Id))
 	}
-	mods = append(mods, qm.OrderBy("id asc"), qm.Limit(500))
+	limit := DEFAULT_LIMIT
+	if r.Limit != 0 {
+		limit = r.Limit
+	}
+	mods = append(mods, qm.OrderBy("id asc"), qm.Limit(limit))
 	if entries, err := models.Entries(mods...).All(db); err != nil {
 		concludeRequest(c, nil, httputil.NewInternalError(err))
 	} else {
