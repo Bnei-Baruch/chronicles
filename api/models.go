@@ -9,6 +9,11 @@ import (
 type ScanRequest struct {
 	Id    string `json:"id",omitempty`
 	Limit int    `json:"limit,omitempty"`
+
+	// Filters.
+	EventTypes []string `json:"event_types":omitempty`
+	UserIds    []string `json:"user_ids"`
+	Namespaces []string `json:"namespaces"`
 }
 
 type ScanResponse struct {

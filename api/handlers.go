@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"reflect"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -26,6 +27,19 @@ const (
 	DEFAULT_LIMIT = 500
 )
 
+func ToInterfaceSlice(s interface{}) []interface{} {
+	slice := reflect.ValueOf(s)
+	if slice.Kind() != reflect.Slice {
+		panic("Expected slice!")
+	}
+	c := slice.Len()
+	out := make([]interface{}, c)
+	for i := 0; i < c; i++ {
+		out[i] = slice.Index(i).Interface()
+	}
+	return out
+}
+
 func ScanHandler(c *gin.Context) {
 	r := ScanRequest{}
 	if c.Bind(&r) != nil {
@@ -33,9 +47,18 @@ func ScanHandler(c *gin.Context) {
 	}
 
 	db := c.MustGet("DB").(*sql.DB)
-	mods := []qm.QueryMod{}
+	mods := []qm.QueryMod{qm.Where("TRUE")}
 	if r.Id != "" {
-		mods = append(mods, qm.Where("id > ?", r.Id))
+		mods = append(mods, qm.And("id > ?", r.Id))
+	}
+	if len(r.Namespaces) > 0 {
+		mods = append(mods, qm.AndIn("namespace in ?", ToInterfaceSlice(r.Namespaces)...))
+	}
+	if len(r.UserIds) > 0 {
+		mods = append(mods, qm.AndIn("user_id in ?", ToInterfaceSlice(r.UserIds)...))
+	}
+	if len(r.EventTypes) > 0 {
+		mods = append(mods, qm.AndIn("client_event_type in ?", ToInterfaceSlice(r.EventTypes)...))
 	}
 	limit := DEFAULT_LIMIT
 	if r.Limit != 0 {
