@@ -11,9 +11,10 @@ type ScanRequest struct {
 	Limit int    `json:"limit,omitempty"`
 
 	// Filters.
-	EventTypes []string `json:"event_types":omitempty`
-	UserIds    []string `json:"user_ids"`
-	Namespaces []string `json:"namespaces"`
+	EventTypes []string  `json:"event_types,omitempty"`
+	UserIds    []string  `json:"user_ids,omitempty"`
+	Namespaces []string  `json:"namespaces,omitempty"`
+	Keycloak   null.Bool `json:"keycloak,omitempty"`
 }
 
 type ScanResponse struct {

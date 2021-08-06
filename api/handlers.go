@@ -24,7 +24,8 @@ import (
 )
 
 const (
-	DEFAULT_LIMIT = 500
+	DEFAULT_LIMIT         = 500
+	CLIENT_USER_ID_PREFIX = "client:"
 )
 
 func ToInterfaceSlice(s interface{}) []interface{} {
@@ -59,6 +60,13 @@ func ScanHandler(c *gin.Context) {
 	}
 	if len(r.EventTypes) > 0 {
 		mods = append(mods, qm.AndIn("client_event_type in ?", ToInterfaceSlice(r.EventTypes)...))
+	}
+	if r.Keycloak.Valid {
+		if r.Keycloak.Bool {
+			mods = append(mods, qm.And(fmt.Sprintf("user_id not like '%s%%'", CLIENT_USER_ID_PREFIX)))
+		} else {
+			mods = append(mods, qm.And(fmt.Sprintf("user_id like '%s%%'", CLIENT_USER_ID_PREFIX)))
+		}
 	}
 	limit := DEFAULT_LIMIT
 	if r.Limit != 0 {
@@ -160,7 +168,7 @@ func handleAppend(c *gin.Context, now time.Time, r AppendRequest) (*AppendRespon
 	if valueOrEmpty(r.KeycloakId) != "" {
 		entry.UserID = valueOrEmpty(r.KeycloakId)
 	} else {
-		entry.UserID = fmt.Sprintf("client:%s", valueOrEmpty(r.ClientId))
+		entry.UserID = fmt.Sprintf("%s%s", CLIENT_USER_ID_PREFIX, valueOrEmpty(r.ClientId))
 	}
 
 	db := c.MustGet("DB").(*sql.DB)
