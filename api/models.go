@@ -7,7 +7,7 @@ import (
 )
 
 type ScanRequest struct {
-	Id    string `json:"id",omitempty`
+	Id    string `json:"id,omitempty"`
 	Limit int    `json:"limit,omitempty"`
 
 	// Filters.
