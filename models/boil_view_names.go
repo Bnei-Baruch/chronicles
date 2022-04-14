@@ -3,8 +3,5 @@
 
 package models
 
-var TableNames = struct {
-	Entries string
-}{
-	Entries: "entries",
-}
+var ViewNames = struct {
+}{}

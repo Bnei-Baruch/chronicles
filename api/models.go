@@ -1,7 +1,7 @@
 package api
 
 import (
-	"github.com/volatiletech/null"
+	"github.com/volatiletech/null/v8"
 
 	"github.com/Bnei-Baruch/chronicles/models"
 )
@@ -38,8 +38,8 @@ type AppendResponse struct {
 }
 
 type AppendOffsetRequest struct {
-	Append AppendRequest `json: "append"`
-	Offset int64         `json: "offset"`
+	Append AppendRequest `json:"append"`
+	Offset int64         `json:"offset"`
 }
 
 type AppendsRequest struct {

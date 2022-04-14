@@ -2,7 +2,7 @@ ARG work_dir=/go/src/github.com/Bnei-Baruch/chronicles
 ARG build_number=dev
 ARG db_url="postgres://user:password@host.docker.internal/chronicles?sslmode=disable"
 
-FROM golang:1.14-alpine3.11 as build
+FROM golang:1.17-alpine3.15 as build
 
 LABEL maintainer="kolmanv@gmail.com"
 
@@ -25,7 +25,7 @@ RUN go test -v $(go list ./... | grep -v /models) \
     && go build -ldflags "-w -X github.com/Bnei-Baruch/chronicles/version.PreRelease=${build_number}"
 
 
-FROM alpine:3.11
+FROM alpine:3.15
 ARG work_dir
 WORKDIR /app
 COPY ./misc/wait-for /wait-for
