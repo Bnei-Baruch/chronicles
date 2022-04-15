@@ -14,9 +14,9 @@ import (
 	pkgerr "github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/segmentio/ksuid"
-	"github.com/volatiletech/null"
-	"github.com/volatiletech/sqlboiler/boil"
-	"github.com/volatiletech/sqlboiler/queries/qm"
+	"github.com/volatiletech/null/v8"
+	"github.com/volatiletech/sqlboiler/v4/boil"
+	"github.com/volatiletech/sqlboiler/v4/queries/qm"
 
 	"github.com/Bnei-Baruch/chronicles/models"
 	"github.com/Bnei-Baruch/chronicles/pkg/httputil"

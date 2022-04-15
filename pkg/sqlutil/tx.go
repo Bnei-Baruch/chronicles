@@ -5,7 +5,7 @@ import (
 
 	pkgerr "github.com/pkg/errors"
 	"github.com/rs/zerolog"
-	"github.com/volatiletech/sqlboiler/boil"
+	"github.com/volatiletech/sqlboiler/v4/boil"
 
 	"github.com/Bnei-Baruch/chronicles/pkg/errs"
 )
