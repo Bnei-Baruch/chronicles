@@ -76,6 +76,9 @@ func ScanHandler(c *gin.Context) {
 	if entries, err := models.Entries(mods...).All(db); err != nil {
 		concludeRequest(c, nil, httputil.NewInternalError(err))
 	} else {
+		if entries == nil {
+			entries = []*models.Entry{}
+		}
 		concludeRequest(c, ScanResponse{entries}, nil)
 	}
 }
