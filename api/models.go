@@ -15,6 +15,12 @@ type ScanRequest struct {
 	UserIds    []string  `json:"user_ids,omitempty"`
 	Namespaces []string  `json:"namespaces,omitempty"`
 	Keycloak   null.Bool `json:"keycloak,omitempty"`
+
+  // Empty will bring all fields.
+  Fields []string  `json:"fields,omitempty"`
+
+  // If true, will scan back.
+  ScanBack null.Bool `json:"scan_back,omitempty"`
 }
 
 type ScanResponse struct {

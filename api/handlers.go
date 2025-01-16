@@ -48,9 +48,17 @@ func ScanHandler(c *gin.Context) {
 	}
 
 	db := c.MustGet("DB").(*sql.DB)
-	mods := []qm.QueryMod{qm.Where("TRUE")}
+	mods := []qm.QueryMod{}
+  if len(r.Fields) > 0 {
+    mods = append(mods, qm.Select(r.Fields...))
+  }
+  mods = append(mods, qm.Where("TRUE"))
 	if r.Id != "" {
-		mods = append(mods, qm.And("id > ?", r.Id))
+    if r.ScanBack.Valid && r.ScanBack.Bool {
+      mods = append(mods, qm.And("id <= ?", r.Id))
+    } else {
+      mods = append(mods, qm.And("id > ?", r.Id))
+    }
 	}
 	if len(r.Namespaces) > 0 {
 		mods = append(mods, qm.AndIn("namespace in ?", ToInterfaceSlice(r.Namespaces)...))
@@ -72,7 +80,11 @@ func ScanHandler(c *gin.Context) {
 	if r.Limit != 0 {
 		limit = r.Limit
 	}
-	mods = append(mods, qm.OrderBy("id asc"), qm.Limit(limit))
+  order_by := "id asc"
+  if r.ScanBack.Valid && r.ScanBack.Bool {
+    order_by = "id desc"
+  }
+	mods = append(mods, qm.OrderBy(order_by), qm.Limit(limit))
 	if entries, err := models.Entries(mods...).All(db); err != nil {
 		concludeRequest(c, nil, httputil.NewInternalError(err))
 	} else {
