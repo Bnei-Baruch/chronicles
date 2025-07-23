@@ -85,9 +85,6 @@ jobs:
           host: ${{ secrets.CHRONICLES_HOST_PRODUCTION }}
           username: root
           key: ${{ secrets.BBDEPLOYMENT_SSH_PRIVATE_KEY }}
-          proxy_host: ${{ secrets.SSH_PROXY_HOST }}
-          proxy_username: ${{ secrets.SSH_PROXY_USERNAME }}
-          proxy_key: ${{ secrets.BBDEPLOYMENT_SSH_PRIVATE_KEY }}
           script: |
             cd /opt/chronicles
             docker compose pull app
