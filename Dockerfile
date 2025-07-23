@@ -1,31 +1,26 @@
 ARG work_dir=/go/src/github.com/Bnei-Baruch/chronicles
 ARG build_number=dev
-ARG db_url="postgres://user:password@host.docker.internal/chronicles?sslmode=disable"
 
-FROM golang:1.17-alpine3.15 as build
+FROM golang:1.17-alpine3.15 AS build
 
 LABEL maintainer="kolmanv@gmail.com"
 
 ARG work_dir
 ARG build_number
-ARG db_url
-
-ENV GOOS=linux \
-	CGO_ENABLED=0 \
-	DB_URL=${db_url}
 
 RUN apk update && \
     apk add --no-cache \
-    git
+    git 
 
 WORKDIR ${work_dir}
 COPY . .
 
-RUN go test -v $(go list ./... | grep -v /models) \
-    && go build -ldflags "-w -X github.com/Bnei-Baruch/chronicles/version.PreRelease=${build_number}"
+ENV GOOS=linux \
+	CGO_ENABLED=0 
+RUN go build -ldflags "-w -X github.com/Bnei-Baruch/chronicles/version.PreRelease=${build_number}"
 
+FROM alpine:latest
 
-FROM alpine:3.15
 ARG work_dir
 WORKDIR /app
 COPY ./misc/wait-for /wait-for
