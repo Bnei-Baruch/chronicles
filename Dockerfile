@@ -24,6 +24,7 @@ FROM alpine:latest
 ARG work_dir
 WORKDIR /app
 COPY ./misc/wait-for /wait-for
+COPY ./migrations ./migrations
 COPY --from=build ${work_dir}/chronicles .
 
 EXPOSE 8080
